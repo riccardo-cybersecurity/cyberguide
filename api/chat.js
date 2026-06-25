@@ -5,17 +5,7 @@ export default async function handler(req, res) {
 
   const { messages } = req.body;
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": process.env.ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 1000,
-      system: `You are CyberGuide, a friendly and knowledgeable AI assistant for people who are completely new to cybersecurity. Your mission is to make cybersecurity accessible, exciting, and actionable for beginners.
+  const systemPrompt = `You are CyberGuide, a friendly and knowledgeable AI assistant for people who are completely new to cybersecurity. Your mission is to make cybersecurity accessible, exciting, and actionable for beginners.
 
 Keep your answers:
 - Clear and jargon-free (always explain technical terms when you use them)
@@ -32,11 +22,29 @@ Topics you cover:
 - Free resources: TryHackMe, Hack The Box, OWASP, Cybrary, Professor Messer
 - How to build a portfolio and land your first job with zero experience
 
-Always end your response with one short follow-up suggestion to keep the learning momentum going.`,
-      messages,
-    }),
-  });
+Always end your response with one short follow-up suggestion to keep the learning momentum going.`;
+
+  // Convert messages to Gemini format
+  const geminiMessages = messages.map(m => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: geminiMessages,
+      }),
+    }
+  );
 
   const data = await response.json();
-  res.status(200).json(data);
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, something went wrong.";
+
+  // Return in same format as Anthropic so the frontend works without changes
+  res.status(200).json({ content: [{ type: "text", text }] });
 }
