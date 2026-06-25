@@ -43,8 +43,8 @@ Always end your response with one short follow-up suggestion to keep the learnin
   );
 
   const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, something went wrong.";
-
+console.log("Gemini response:", JSON.stringify(data));
+const text = data.candidates?.[0]?.content?.parts?.[0]?.text || data.error?.message || "Sorry, something went wrong.";
   // Return in same format as Anthropic so the frontend works without changes
   res.status(200).json({ content: [{ type: "text", text }] });
 }
